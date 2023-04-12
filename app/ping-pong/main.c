@@ -19,9 +19,12 @@
  *          the code so that game can be played in horizontal orientation which 
  *          makes the game more playable.
 *******************************************************************************/
+#include <unistd.h>     // for usleep
 #include <ncurses.h>
 
-#define PAD_WIDTH   5
+#define PAD_WIDTH       5
+#define PAD_WIDTH_HALF  2
+#define ENABLE_DEBUG    0
 
 /** Typedefs **/
 typedef enum {
@@ -44,21 +47,22 @@ typedef struct
 } pad_obj_t;
 
 /** Function Prototypes **/
-void pong_init(ball_obj_t *ball_obj, pad_obj_t *p1_pad, pad_obj_t *p2_pad);
-void pong_ball_pos_update(ball_obj_t *ball_obj, pad_obj_t *p1_pad, pad_obj_t *p2_pad);
+void pong_new_game();
+void pong_new_round();
+void pong_ball_pos_update();
 void pong_pad_mov(pad_obj_t *pad, mov_dir_t dir);
-void pong_update_scrn(ball_obj_t *ball_obj, pad_obj_t *p1_pad, pad_obj_t *p2_pad);
+void pong_update_scrn();
 
 /** Global Variables **/
 int win_width = 0;
 int win_height = 0;
 
-main()
-{
-  ball_obj_t ball_obj;
-  pad_obj_t p1_pad, p2_pad;
+ball_obj_t ball_obj;
+pad_obj_t p1_pad, p2_pad;
 
-  int i = 0, cont = 0;
+int main()
+{
+  int cont = 0;
   bool end = false;
 
   initscr();
@@ -68,16 +72,14 @@ main()
   noecho();
   curs_set(0);
   getmaxyx(stdscr, win_height, win_width);
-  pong_init(&ball_obj, &p1_pad, &p2_pad);
+  pong_new_game();
 
-  getch();
-
-  for (nodelay(stdscr, 1); !end; usleep(32000))
+  for (nodelay(stdscr, 1); !end; usleep(12000))
   {
     if (++cont % 16 == 0)
     {
       // ball update
-      pong_ball_pos_update(&ball_obj, &p1_pad, &p2_pad);
+      pong_ball_pos_update();
     }
     switch (getch())
     {
@@ -98,95 +100,111 @@ main()
       break;
     case 0x1B:
       endwin();
-      end++;
+      end = true;
       break;
     }
-    pong_update_scrn(&ball_obj, &p1_pad, &p2_pad);
+    pong_update_scrn();
   }
+
+  return 0;
 }
 
-void pong_init(ball_obj_t *ball_obj, pad_obj_t *p1_pad, pad_obj_t *p2_pad)
+void pong_new_game()
 {
-  ball_obj->x = win_width / 2;
-  ball_obj->y = win_height / 2;
-  ball_obj->movhor = false;
-  ball_obj->movhor = false;
+  ball_obj.x = win_width / 2;
+  ball_obj.y = win_height / 2;
+  ball_obj.movhor = false;
+  ball_obj.movhor = true;
 
-  p1_pad->x = win_width / 2;
-  p1_pad->y = win_height - 1;
-  p1_pad->lost = 0;
-  p1_pad->wins = 0;
+  p1_pad.x = win_width / 2;
+  p1_pad.y = win_height - 1;
+  p1_pad.lost = 0;
+  p1_pad.wins = 0;
 
-  p2_pad->x = win_width / 2;
-  p2_pad->y = 1;
-  p2_pad->lost = 0;
-  p2_pad->wins = 0;
+  p2_pad.x = win_width / 2;
+  p2_pad.y = 1;
+  p2_pad.lost = 0;
+  p2_pad.wins = 0;
 }
 
-void pong_ball_pos_update(ball_obj_t *ball_obj, pad_obj_t *p1_pad, pad_obj_t *p2_pad)
+void pong_new_round()
 {
-  if ((ball_obj->x == win_width - 1) || (ball_obj->x == 1))
-    ball_obj->movhor = !ball_obj->movhor;
+  ball_obj.x = win_width / 2;
+  ball_obj.y = win_height / 2;
 
-  if (ball_obj->y <= 2)
-  {
-    ball_obj->movver = true;
-    if (ball_obj->x == p2_pad->x - 1)
-      ball_obj->movhor = false;
-    else if (ball_obj->x == p2_pad->x + 1)
-      ball_obj->movhor = true;
-    else if (ball_obj->x != p2_pad->x) {
-      p1_pad->wins++;
-      ball_obj->x = win_width / 2;
-      ball_obj->y = win_height / 2;
-    }
-  }
-  else if (ball_obj->y >= win_height - 2)
-  {
-    ball_obj->movver = false;
-    if (ball_obj->x == p1_pad->x - 1)
-      ball_obj->movhor = false;
-    else if (ball_obj->x == p1_pad->x + 1)
-      ball_obj->movhor = true;
-    else if (ball_obj->x != p1_pad->x) {
-      p2_pad->wins++;
-      ball_obj->x = win_width / 2;
-      ball_obj->y = win_height / 2;
-    }
-  }
-  
-  ball_obj->x = ball_obj->movhor ? ball_obj->x + 1 : ball_obj->x - 1;
-  ball_obj->y = ball_obj->movver ? ball_obj->y + 1 : ball_obj->y - 1;
+//   p1_pad.x = win_width / 2;
+//   p1_pad.y = win_height - 1;
+
+//   p2_pad.x = win_width / 2;
+//   p2_pad.y = 1;
 }
 
 void pong_pad_mov(pad_obj_t *pad, mov_dir_t dir)
 {
-  if ((pad->x > 1) && (dir == MOV_LEFT))
+  if ((pad->x > PAD_WIDTH_HALF) && (dir == MOV_LEFT))
     pad->x--;
-  if ((pad->x < (win_width - PAD_WIDTH - 1)) && (dir == MOV_RIGHT))
+  if ((pad->x < (win_width - PAD_WIDTH_HALF - 1)) && (dir == MOV_RIGHT))
     pad->x++;
 }
 
-void pong_update_scrn(ball_obj_t *ball_obj, pad_obj_t *p1_pad, pad_obj_t *p2_pad)
+void pong_ball_pos_update()
+{
+  if ((ball_obj.x == win_width - 1) || (ball_obj.x == 1))
+    ball_obj.movhor = !ball_obj.movhor;
+
+  if (ball_obj.y <= 2)
+  {
+    ball_obj.movver = true;
+    
+    if (ball_obj.x == (p2_pad.x - PAD_WIDTH_HALF) || ball_obj.x == (p2_pad.x - PAD_WIDTH_HALF + 1))
+      ball_obj.movhor = false;
+    else if (ball_obj.x == (p2_pad.x + PAD_WIDTH_HALF) || ball_obj.x == (p2_pad.x + PAD_WIDTH_HALF - 1))
+      ball_obj.movhor = true;
+    else if (ball_obj.x != p2_pad.x) {
+      p1_pad.wins++;
+      pong_new_round();
+    }
+  }
+  else if (ball_obj.y >= win_height - 2)
+  {
+    ball_obj.movver = false;
+
+    if (ball_obj.x == (p1_pad.x - PAD_WIDTH_HALF) || ball_obj.x == (p1_pad.x - PAD_WIDTH_HALF + 1))
+      ball_obj.movhor = false;
+    else if (ball_obj.x == (p1_pad.x + PAD_WIDTH_HALF) || ball_obj.x == (p1_pad.x + PAD_WIDTH_HALF - 1))
+      ball_obj.movhor = true;
+    else if (ball_obj.x != p1_pad.x) {
+      p2_pad.wins++;
+      pong_new_round();
+    }
+  }
+  
+  ball_obj.x = ball_obj.movhor ? ball_obj.x + 1 : ball_obj.x - 1;
+  ball_obj.y = ball_obj.movver ? ball_obj.y + 1 : ball_obj.y - 1;
+}
+
+
+void pong_update_scrn()
 {
     erase();
 
-    mvprintw(2, (win_width / 2) - 2, "%i | %i", p1_pad->wins, p2_pad->wins);
+    mvprintw((win_height / 2), (win_width / 2) - 2, "%i | %i", p1_pad.wins, p2_pad.wins);
 
     // mvvline(0, win_width / 2, ACS_VLINE, win_height);
     attron(COLOR_PAIR(1));
 
-    mvprintw(ball_obj->y, ball_obj->x, "o");
+    mvprintw(ball_obj.y, ball_obj.x, "o");
 
-    for (int i = 0; i < PAD_WIDTH; i++)
+    for (int i = -PAD_WIDTH_HALF; i <= PAD_WIDTH_HALF; i++)
     {
-      mvprintw(p1_pad->y, p1_pad->x + i, "=");
-      mvprintw(p2_pad->y, p2_pad->x + i, "=");
+      mvprintw(p1_pad.y, p1_pad.x + i, "=");
+      mvprintw(p2_pad.y, p2_pad.x + i, "=");
     }
 
-    mvprintw(0, 0, "%d,%d", ball_obj->x, ball_obj->y);
-    mvprintw(1, 0, "%d,%d", p1_pad->x, p1_pad->y);
-    mvprintw(2, 0, "%d,%d", p2_pad->x, p2_pad->y);
-
+#if ENABLE_DEBUG
+    mvprintw(0, 0, "%d,%d", ball_obj.x, ball_obj.y);
+    mvprintw(1, 0, "%d,%d", p1_pad.x, p1_pad.y);
+    mvprintw(2, 0, "%d,%d", p2_pad.x, p2_pad.y);
+#endif
     attroff(COLOR_PAIR(1));
 }
