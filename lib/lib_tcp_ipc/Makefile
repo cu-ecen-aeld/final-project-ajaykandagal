@@ -1,13 +1,15 @@
 CC ?= $(CROSS-COMPILE)gcc
 CFLAGS ?= -g -Wall -Werror
-TARGET ?= aesdsocket
-LDFLAGS ?= -pthread -lrt
+TARGET ?=
+LDFLAGS ?=
 
-all: $(TARGET)
+all: server client
 
-$(TARGET): $(TARGET).c
-	$(CC) $(CFLAGS) -c -o $(TARGET).o $(TARGET).c $(LDFLAGS)
-	$(CC) $(CFLAGS) -I/ -o $(TARGET) $(TARGET).o $(LDFLAGS)
+server: server.c
+	$(CC) $(CFLAGS) -o server server.c $(LDFLAGS)
+
+client: client.c
+	$(CC) $(CFLAGS) -o client client.c $(LDFLAGS)
 
 clean:
-	rm -f $(TARGET) *.o *.elf *.map *.out
+	rm -f server client *.o *.elf *.map *.out
