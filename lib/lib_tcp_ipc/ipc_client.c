@@ -1,16 +1,18 @@
 /*******************************************************************************
- * @file    client.c
+ * @file    ipc_client.c
  * @brief
  *
  * @author  Ajay Kandagal <ajka9053@colorado.edu>
  * @date    Apr 12th 2023
  ******************************************************************************/
 #include <stdio.h>
-#include <string.h>
+#include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
+#include <pthread.h>
 #include <arpa/inet.h>
 
-#include "common.h"
+#include "ipc_common.h"
 
 /** Defines **/
 #define MAX_BACKLOGS (1)
@@ -25,10 +27,11 @@
  */
 
 /** Function Prototypes **/
-int client_init(int port);
-int client_connect();
-int client_read();
-int client_write(char *msg, int msg_len);
+int ipc_client_init(int port);
+int ipc_client_connect();
+void *ipc_read(void *argv);
+int ipc_write(char *msg, int msg_len);
+void ipc_terminate();
 
 /** Global Variables **/
 struct client_info_t client_info;
@@ -37,14 +40,27 @@ struct msg_packet_t msg_packet;
 
 int main()
 {
-    client_init(9000);
-    client_connect();
+    pthread_t ipc_read_tid;
 
-    client_write("123", 3);
-    client_read();
+    if (ipc_client_init(9000))
+        ipc_terminate();
+    
+    if (ipc_client_connect())
+        ipc_terminate();
 
-    if (client_info.fd)
-        close(client_info.fd);
+    pthread_create(&ipc_read_tid, NULL, ipc_read, NULL);
+
+    if (ipc_write("123", 3))
+        ipc_terminate();
+
+    if (ipc_write("12345", 3))
+        ipc_terminate();
+
+    if (ipc_write("5679876", 3))
+        ipc_terminate();
+
+
+    pthread_join(ipc_read_tid, NULL);
 
     return 0;
 }
@@ -54,7 +70,7 @@ int main()
  *
  * @return
  ******************************************************************************/
-int client_init(int port)
+int ipc_client_init(int port)
 {
     memset(&client_info, 0, sizeof(struct client_info_t));
     memset(&server_info, 0, sizeof(struct server_info_t));
@@ -64,7 +80,7 @@ int client_init(int port)
     // Check if socket is created successfully
     if (client_info.fd < 0)
     {
-        perror("Failed to create socket");
+        perror("Client: Failed to create socket");
         return -1;
     }
 
@@ -73,7 +89,7 @@ int client_init(int port)
     server_info.addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     server_info.addr.sin_port = htons(server_info.port);
 
-    printf("Client initialized\n");
+    printf("Client: Initialized\n");
 
     return 0;
 }
@@ -83,17 +99,17 @@ int client_init(int port)
  *
  * @return
  ******************************************************************************/
-int client_connect()
+int ipc_client_connect()
 {
     if (connect(client_info.fd, (struct sockaddr *)&server_info.addr,
                 sizeof(server_info.addr)))
     {
-        perror("Connection with server failed\n");
+        perror("Client: Failed to connect");
         close(client_info.fd);
         return -1;
     }
 
-    printf("Connected\n");
+    printf("Client: Connected\n");
 
     return 0;
 }
@@ -103,39 +119,45 @@ int client_connect()
  *
  * @return
  ******************************************************************************/
-int client_read()
+void *ipc_read(void* argv)
 {
     char buffer[BUFFER_MAX_SIZE];
     int buffer_len;
 
-    buffer_len = read(client_info.fd, buffer, BUFFER_MAX_SIZE);
+    while(1)
+    {
+        buffer_len = read(client_info.fd, buffer, BUFFER_MAX_SIZE);
+        
+        if (buffer_len < 0)
+        {
+            perror("Client: Error while getting data");
+            pthread_exit(0);
+        }
+        if (buffer_len == 0)
+        {
+            printf("Client: Disconnected\n");
+            pthread_exit(0);
+        }
+        else if (buffer_len == FIXED_MESSAGE_LEN)
+        {
+            printf("Client: Received all bytes\n");
+            memcpy(msg_packet.msg_data, &buffer, FIXED_MESSAGE_LEN);
 
-    if (buffer_len < 0)
-    {
-        perror("Error while getting data from the client");
-        return -1;
-    }
-    if (buffer_len == 0)
-    {
-        printf("Disconnected\n");
-        return -1;
-    }
-    else if (buffer_len == sizeof(struct msg_packet_t))
-    {
-        memcpy(&msg_packet, buffer, buffer_len);
-        printf("Message: {%d, %d, %d}\n", msg_packet.msg_id, msg_packet.pos_x,
-               msg_packet.pos_y);
-        return 0;
-    }
-    else
-    {
-        printf("Received invalid data from client. \nexp: %ld \nrec: %d\n",
-               sizeof(struct msg_packet_t), buffer_len);
-        return -1;
+            for (int i = 0; i < buffer_len; i++)
+                printf("%c \t", buffer[i]);
+
+            printf("\n");
+        }
+        else
+        {
+            printf("Client: Received invalid number of bytes: exp: %ld \trecv: %d\n",
+                    sizeof(struct msg_packet_t), buffer_len);
+            pthread_exit(0);
+        }
     }
 }
 
-int client_write(char *msg, int msg_len)
+int ipc_write(char *msg, int msg_len)
 {
     int buffer_len;
 
@@ -143,23 +165,40 @@ int client_write(char *msg, int msg_len)
 
     if (buffer_len < 0)
     {
-        perror("Error while sending data to the client");
+        perror("Client: Error while sending data");
         return -1;
     }
     if (buffer_len == 0)
     {
-        printf("Disconnected\n");
+        printf("Client: Disconnected\n");
         return -1;
     }
-    else if (buffer_len == sizeof(struct msg_packet_t))
+    else if (buffer_len == msg_len)
     {
-        printf("Sent all bytes\n");
+        printf("Client: Sent all bytes\n");
         return 0;
     }
     else
     {
-        printf("Received invalid data from client. \nexp: %ld \nrec: %d\n",
+        printf("Client: Could not write all bytes: exp: %ld \trecv: %d\n",
                sizeof(struct msg_packet_t), buffer_len);
         return -1;
     }
+}
+
+void ipc_terminate()
+{
+    if (server_info.fd)
+    {
+        close(server_info.fd);
+        server_info.fd = 0;
+    }
+
+    if (client_info.fd)
+    {
+        close(client_info.fd);
+        client_info.fd = 0;
+    }
+
+    exit(1);
 }

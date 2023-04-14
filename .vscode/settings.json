@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "queue.h": "c",
+        "socket.h": "c",
+        "ipc_cb_lifo.h": "c"
+    }
+}
