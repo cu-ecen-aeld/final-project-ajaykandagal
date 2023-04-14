@@ -19,7 +19,7 @@
 /** Function Prototypes **/
 int ipc_server_setup(int port);
 int ipc_server_connect();
-int ipc_terminate();
+int ipc_server_terminate();
 
 /** Global Variables **/
 struct socket_info_t client_info;
@@ -37,14 +37,16 @@ pthread_t ipc_read_tid;
 int ipc_server_init()
 {
     if (ipc_server_setup(9000))
-        return ipc_terminate();
+        return ipc_server_terminate();
 
     if (ipc_server_connect())
-        return ipc_terminate();
+        return ipc_server_terminate();
 
     recv_msg_init();
 
     pthread_create(&ipc_read_tid, NULL, ipc_read, (void*) &client_info);
+
+    return 0;
 }
 
 int ipc_server_close()
@@ -58,7 +60,7 @@ int ipc_server_close()
 
 int ipc_server_send(struct msg_packet_t *msg_packet)
 {
-    ipc_write(&client_info, msg_packet);
+    return ipc_write(&client_info, msg_packet);
 }
 
 int ipc_server_recv(struct msg_packet_t *msg_packet)
@@ -145,7 +147,7 @@ int ipc_server_connect()
     return 0;
 }
 
-int ipc_terminate()
+int ipc_server_terminate()
 {
     if (server_info.fd)
     {

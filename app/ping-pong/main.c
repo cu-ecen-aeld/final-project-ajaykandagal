@@ -22,6 +22,14 @@
 #include <unistd.h>     // for usleep
 #include <ncurses.h>
 
+#define IS_SERVER     0
+
+#if IS_SERVER
+#include "ipc_server.h"
+#else
+#include "ipc_client.h"
+#endif
+
 #define PAD_WIDTH       5
 #define PAD_WIDTH_HALF  2
 #define ENABLE_DEBUG    0
@@ -64,6 +72,7 @@ int main()
 {
   int cont = 0;
   bool end = false;
+  struct msg_packet_t msg_packet;
 
   initscr();
   start_color();
@@ -74,8 +83,23 @@ int main()
   getmaxyx(stdscr, win_height, win_width);
   pong_new_game();
 
+  #if IS_SERVER
+  ipc_server_init();
+  #else
+  ipc_client_init();
+  #endif
+
   for (nodelay(stdscr, 1); !end; usleep(12000))
   {
+    #if IS_SERVER
+    if (!ipc_server_recv(&msg_packet)) {
+    #else
+    if (!ipc_client_recv(&msg_packet)) {
+    #endif
+      p2_pad.x = msg_packet.msg_data[0];
+      free(msg_packet.msg_data);
+    }
+
     if (++cont % 16 == 0)
     {
       // ball update
@@ -83,18 +107,21 @@ int main()
     }
     switch (getch())
     {
+#if IS_SERVER
     case KEY_RIGHT:
       pong_pad_mov(&p1_pad, MOV_RIGHT);
       break;
     case KEY_LEFT:
       pong_pad_mov(&p1_pad, MOV_LEFT);
       break;
+#else
     case 'a':
-      pong_pad_mov(&p2_pad, MOV_LEFT);
+      pong_pad_mov(&p1_pad, MOV_LEFT);
       break;
     case 'd':
-      pong_pad_mov(&p2_pad, MOV_RIGHT);
+      pong_pad_mov(&p1_pad, MOV_RIGHT);
       break;
+#endif
     case 'p':
       getchar();
       break;
@@ -103,9 +130,26 @@ int main()
       end = true;
       break;
     }
+
+
+    msg_packet.msg_id = MSG_ID_PAD_POS;
+    msg_packet.msg_len = 1;
+    msg_packet.msg_data = (uint8_t*) malloc(sizeof(msg_packet.msg_len));
+    msg_packet.msg_data[0] = p1_pad.x;
+
+    #if IS_SERVER
+    ipc_server_send(&msg_packet);
+    #else
+    ipc_client_send(&msg_packet);
+    #endif
     pong_update_scrn();
   }
 
+#if IS_SERVER
+  ipc_server_close();
+#else
+  ipc_client_close();
+#endif
   return 0;
 }
 

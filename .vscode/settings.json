@@ -2,6 +2,14 @@
     "files.associations": {
         "queue.h": "c",
         "socket.h": "c",
-        "ipc_cb_lifo.h": "c"
+        "ipc_cb_lifo.h": "c",
+        "string.h": "c",
+        "stdint.h": "c",
+        "pthread.h": "c",
+        "ipc_cb_fifo.h": "c",
+        "ipc_common.h": "c",
+        "inet.h": "c",
+        "ipc_client.h": "c",
+        "ipc_server.h": "c"
     }
 }

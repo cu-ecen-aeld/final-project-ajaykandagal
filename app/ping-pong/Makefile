@@ -1,8 +1,8 @@
 CC ?= $(CROSS-COMPILE)gcc
 CFLAGS ?= -g -Wall -Werror
 TARGET ?= pingpong
-LDFLAGS ?= -lncurses
-SOURCE = main.c
+LDFLAGS ?= -lncurses -lpthread
+SOURCE = main.c ipc_cb_fifo.c ipc_common.c ipc_server.c ipc_client.c
 
 all: $(TARGET)
 
