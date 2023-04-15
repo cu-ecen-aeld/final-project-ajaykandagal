@@ -24,7 +24,8 @@ enum msg_id_e
 {
     MSG_ID_NONE = 0,
     MSG_ID_PAD_POS,
-    MSG_ID_GAME_STATUS
+    MSG_ID_GAME_STATUS,
+    MSG_ID_BALL_POS
 };
 
 struct msg_packet_t

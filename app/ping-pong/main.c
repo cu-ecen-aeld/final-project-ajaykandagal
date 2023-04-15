@@ -22,7 +22,7 @@
 #include <unistd.h>     // for usleep
 #include <ncurses.h>
 
-#define IS_SERVER     0
+#define IS_SERVER       0
 
 #if IS_SERVER
 #include "ipc_server.h"
@@ -65,14 +65,18 @@ void pong_update_scrn();
 int win_width = 0;
 int win_height = 0;
 
+int origin_x = 0;
+int origin_y = 0;
+
 ball_obj_t ball_obj;
 pad_obj_t p1_pad, p2_pad;
+
+struct msg_packet_t msg_packet;
 
 int main()
 {
   int cont = 0;
   bool end = false;
-  struct msg_packet_t msg_packet;
 
   initscr();
   start_color();
@@ -85,7 +89,11 @@ int main()
 
   #if IS_SERVER
   ipc_server_init();
+  origin_x = 0;
+  origin_y = 0;
   #else
+  origin_x = win_width;
+  origin_y = win_height;
   ipc_client_init();
   #endif
 
@@ -96,32 +104,38 @@ int main()
     #else
     if (!ipc_client_recv(&msg_packet)) {
     #endif
-      p2_pad.x = msg_packet.msg_data[0];
+      switch(msg_packet.msg_id)
+      {
+        case MSG_ID_PAD_POS:
+          p2_pad.x = win_width - msg_packet.msg_data[0];
+        break;
+        case MSG_ID_BALL_POS:
+            ball_obj.x = win_width - msg_packet.msg_data[0];
+            ball_obj.y = win_height - msg_packet.msg_data[1];
+            ball_obj.movhor = !(bool)msg_packet.msg_data[2];
+            ball_obj.movver = !(bool)msg_packet.msg_data[4];
+        break;
+        default:
+        break;
+      }
       free(msg_packet.msg_data);
     }
 
     if (++cont % 16 == 0)
     {
       // ball update
+      #if IS_SERVER
       pong_ball_pos_update();
+      #endif
     }
     switch (getch())
     {
-#if IS_SERVER
     case KEY_RIGHT:
       pong_pad_mov(&p1_pad, MOV_RIGHT);
       break;
     case KEY_LEFT:
       pong_pad_mov(&p1_pad, MOV_LEFT);
       break;
-#else
-    case 'a':
-      pong_pad_mov(&p1_pad, MOV_LEFT);
-      break;
-    case 'd':
-      pong_pad_mov(&p1_pad, MOV_RIGHT);
-      break;
-#endif
     case 'p':
       getchar();
       break;
@@ -130,18 +144,6 @@ int main()
       end = true;
       break;
     }
-
-
-    msg_packet.msg_id = MSG_ID_PAD_POS;
-    msg_packet.msg_len = 1;
-    msg_packet.msg_data = (uint8_t*) malloc(sizeof(msg_packet.msg_len));
-    msg_packet.msg_data[0] = p1_pad.x;
-
-    #if IS_SERVER
-    ipc_server_send(&msg_packet);
-    #else
-    ipc_client_send(&msg_packet);
-    #endif
     pong_update_scrn();
   }
 
@@ -173,14 +175,26 @@ void pong_new_game()
 
 void pong_new_round()
 {
-  ball_obj.x = win_width / 2;
-  ball_obj.y = win_height / 2;
-
 //   p1_pad.x = win_width / 2;
 //   p1_pad.y = win_height - 1;
 
 //   p2_pad.x = win_width / 2;
 //   p2_pad.y = 1;
+
+#if IS_SERVER
+  ball_obj.x = win_width / 2;
+  ball_obj.y = win_height / 2;
+  msg_packet.msg_id = MSG_ID_BALL_POS;
+  msg_packet.msg_len = 4;
+  msg_packet.msg_data = (uint8_t*) malloc(sizeof(msg_packet.msg_len));
+  msg_packet.msg_data[0] = ball_obj.x;
+  msg_packet.msg_data[1] = ball_obj.y;
+  msg_packet.msg_data[2] = (uint8_t)ball_obj.movhor;
+  msg_packet.msg_data[4] = (uint8_t)ball_obj.movver;
+
+  ipc_server_send(&msg_packet);
+  free(msg_packet.msg_data);
+#endif
 }
 
 void pong_pad_mov(pad_obj_t *pad, mov_dir_t dir)
@@ -189,6 +203,19 @@ void pong_pad_mov(pad_obj_t *pad, mov_dir_t dir)
     pad->x--;
   if ((pad->x < (win_width - PAD_WIDTH_HALF - 1)) && (dir == MOV_RIGHT))
     pad->x++;
+
+  msg_packet.msg_id = MSG_ID_PAD_POS;
+  msg_packet.msg_len = 2;
+  msg_packet.msg_data = (uint8_t*) malloc(sizeof(msg_packet.msg_len));
+  msg_packet.msg_data[0] = p1_pad.x;
+  msg_packet.msg_data[1] = p1_pad.y;
+
+#if IS_SERVER
+  ipc_server_send(&msg_packet);
+#else
+  ipc_client_send(&msg_packet);
+#endif
+  free(msg_packet.msg_data);
 }
 
 void pong_ball_pos_update()
@@ -225,6 +252,19 @@ void pong_ball_pos_update()
   
   ball_obj.x = ball_obj.movhor ? ball_obj.x + 1 : ball_obj.x - 1;
   ball_obj.y = ball_obj.movver ? ball_obj.y + 1 : ball_obj.y - 1;
+
+#if IS_SERVER
+  msg_packet.msg_id = MSG_ID_BALL_POS;
+  msg_packet.msg_len = 4;
+  msg_packet.msg_data = (uint8_t*) malloc(sizeof(msg_packet.msg_len));
+  msg_packet.msg_data[0] = ball_obj.x;
+  msg_packet.msg_data[1] = ball_obj.y;
+  msg_packet.msg_data[2] = (uint8_t)ball_obj.movhor;
+  msg_packet.msg_data[4] = (uint8_t)ball_obj.movver;
+
+  ipc_server_send(&msg_packet);
+  free(msg_packet.msg_data);
+#endif
 }
 
 

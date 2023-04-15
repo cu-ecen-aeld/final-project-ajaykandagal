@@ -30,7 +30,7 @@ void *ipc_read(void* argv)
         }
         else if (buffer_len >= MESSAGE_MIN_LEN)
         {
-            printf("Received all bytes\n");
+            // printf("Received all bytes\n");
             msg_packet.msg_id = buffer[0];
             msg_packet.msg_len = buffer[1];
 
@@ -81,7 +81,7 @@ int ipc_write(struct socket_info_t *sock_info, struct msg_packet_t *msg)
     }
     else if (buffer_len == msg->msg_len + 2)
     {
-        printf("Sent all bytes\n");
+        // printf("Sent all bytes\n");
         return 0;
     }
     else
