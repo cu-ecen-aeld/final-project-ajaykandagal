@@ -1,13 +1,14 @@
 /*******************************************************************************
- * @file    ipc_common.h
+ * @file    tcpipc.h
  * @brief
  *
  * @author  Ajay Kandagal <ajka9053@colorado.edu>
- * @date    Apr 12th 2023
+ * @date    Apr 10th 2023
  ******************************************************************************/
-#ifndef IPC_COMMON_H
-#define IPC_COMMON_H
+#ifndef TCPIPC_H
+#define TCPIPC_H
 
+/** Standard libraries **/
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -15,10 +16,22 @@
 #include <stdint.h>
 #include <arpa/inet.h>
 
+/** Application specififc libraries **/
+#include "tcpipc_cb_fifo.h"
+
+/** Defines  **/
 #define MESSAGE_MIN_LEN         (3)
 #define RECV_MESSAGE_CB_LEN     (10)
 #define MAX_BACKLOGS            (1)
 #define BUFFER_MAX_SIZE         (1024)
+
+/** User Data Types **/
+enum tcp_role_e
+{
+    TCP_ROLE_NONE = 0,
+    TCP_ROLE_SERVER,
+    TCP_ROLE_CLIENT
+};
 
 enum msg_id_e
 {
@@ -26,13 +39,6 @@ enum msg_id_e
     MSG_ID_PAD_POS,
     MSG_ID_GAME_STATUS,
     MSG_ID_BALL_POS
-};
-
-struct msg_packet_t
-{
-    uint8_t msg_id;
-    uint8_t msg_len;
-    uint8_t *msg_data;
 };
 
 struct socket_info_t
@@ -44,8 +50,11 @@ struct socket_info_t
     int exit_status;
 };
 
-void *ipc_read(void* argv);
-int ipc_write(struct socket_info_t *sock_info, struct msg_packet_t *msg);
-void ipc_print_msg(struct msg_packet_t *msg);
+/** Public Functions **/
+int tcpipc_init(enum tcp_role_e tcp_role, int port);
+void tcpipc_close();
+int tcpipc_send(struct msg_packet_t *msg_packet);
+int tcpipc_recv(struct msg_packet_t *msg_packet);
+void tcpipc_print_msg(struct msg_packet_t *msg_packet);
 
-#endif //IPC_COMMON_H
+#endif //TCPIPC_H

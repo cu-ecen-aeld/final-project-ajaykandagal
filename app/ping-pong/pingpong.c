@@ -1,7 +1,7 @@
 /*******************************************************************************
- * @file    main.c
+ * @file    pingpong.c
  * @brief   Mutliplayer Ping-pong game which allows two players to connect and 
- *          play over Raspberry Pi.
+ *          play using Raspberry Pi.
  * 
  * @details 
  * 
@@ -18,17 +18,20 @@
  *          Reformatted the code to make code more modular. Working on modifying 
  *          the code so that game can be played in horizontal orientation which 
  *          makes the game more playable.
+ * 
+ * @change  Apr 16th 2023, Ajay Kandagal, ajka9053@colorado.edu
+ * 
+ *          Multiplayer functionality added. Integrated API calls to libtcpipc
+ *          and linked with the library. Two players can connect over network
+ *          and play with each other. Both players will use <- and -> for
+ *          controls.
 *******************************************************************************/
-#include <unistd.h>     // for usleep
 #include <ncurses.h>
+#include <unistd.h>
 
 #define IS_SERVER       0
 
-#if IS_SERVER
-#include "ipc_server.h"
-#else
-#include "ipc_client.h"
-#endif
+#include "tcpipc.h"
 
 #define PAD_WIDTH       5
 #define PAD_WIDTH_HALF  2
@@ -88,22 +91,18 @@ int main()
   pong_new_game();
 
   #if IS_SERVER
-  ipc_server_init();
+  tcpipc_init(TCP_ROLE_SERVER, 9000);
   origin_x = 0;
   origin_y = 0;
   #else
+  tcpipc_init(TCP_ROLE_CLIENT, 9000);
   origin_x = win_width;
   origin_y = win_height;
-  ipc_client_init();
   #endif
 
   for (nodelay(stdscr, 1); !end; usleep(12000))
   {
-    #if IS_SERVER
-    if (!ipc_server_recv(&msg_packet)) {
-    #else
-    if (!ipc_client_recv(&msg_packet)) {
-    #endif
+    if (!tcpipc_recv(&msg_packet)) {
       switch(msg_packet.msg_id)
       {
         case MSG_ID_PAD_POS:
@@ -147,11 +146,7 @@ int main()
     pong_update_scrn();
   }
 
-#if IS_SERVER
-  ipc_server_close();
-#else
-  ipc_client_close();
-#endif
+  tcpipc_close();
   return 0;
 }
 
@@ -192,7 +187,7 @@ void pong_new_round()
   msg_packet.msg_data[2] = (uint8_t)ball_obj.movhor;
   msg_packet.msg_data[4] = (uint8_t)ball_obj.movver;
 
-  ipc_server_send(&msg_packet);
+  tcpipc_send(&msg_packet);
   free(msg_packet.msg_data);
 #endif
 }
@@ -210,11 +205,7 @@ void pong_pad_mov(pad_obj_t *pad, mov_dir_t dir)
   msg_packet.msg_data[0] = p1_pad.x;
   msg_packet.msg_data[1] = p1_pad.y;
 
-#if IS_SERVER
-  ipc_server_send(&msg_packet);
-#else
-  ipc_client_send(&msg_packet);
-#endif
+  tcpipc_send(&msg_packet);
   free(msg_packet.msg_data);
 }
 
@@ -262,7 +253,7 @@ void pong_ball_pos_update()
   msg_packet.msg_data[2] = (uint8_t)ball_obj.movhor;
   msg_packet.msg_data[4] = (uint8_t)ball_obj.movver;
 
-  ipc_server_send(&msg_packet);
+  tcpipc_send(&msg_packet);
   free(msg_packet.msg_data);
 #endif
 }
