@@ -4,7 +4,7 @@
  *
  * @author  Ajay Kandagal <ajka9053@colorado.edu>
  * @date    Apr 10th 2023
- ******************************************************************************/
+ *******************************************************************************/
 #include "tcpipc.h"
 
 /** Private Function Prototypes **/
@@ -13,7 +13,7 @@ int tcpipc_server_connect();
 int tcpipc_client_setup(int port);
 int tcpipc_client_connect();
 int tcpipc_terminate();
-void *tcpipc_recv_thread(void* argv);
+void *tcpipc_recv_thread(void *argv);
 
 /** Global Variables **/
 struct socket_info_t client_info;
@@ -21,6 +21,11 @@ struct socket_info_t server_info;
 struct socket_info_t *sock_info = NULL;
 pthread_t tcpipc_recv_tid;
 
+/*******************************************************************************
+ * @brief
+ *
+ * @return
+ *******************************************************************************/
 int tcpipc_init(enum tcp_role_e tcp_role, int port)
 {
     switch (tcp_role)
@@ -50,7 +55,8 @@ int tcpipc_init(enum tcp_role_e tcp_role, int port)
 
     recv_msg_init();
 
-    pthread_create(&tcpipc_recv_tid, NULL, tcpipc_recv_thread, (void *)&client_info);
+    pthread_create(&tcpipc_recv_tid, NULL, tcpipc_recv_thread,
+                   (void *)&client_info);
 
     return 0;
 }
@@ -61,6 +67,11 @@ void tcpipc_close()
     recv_msg_close();
 }
 
+/*******************************************************************************
+ * @brief
+ *
+ * @return
+ *******************************************************************************/
 int tcpipc_send(struct msg_packet_t *msg_packet)
 {
     char buffer[BUFFER_MAX_SIZE];
@@ -95,20 +106,30 @@ int tcpipc_send(struct msg_packet_t *msg_packet)
     }
 }
 
+/*******************************************************************************
+ * @brief
+ *
+ * @return
+ *******************************************************************************/
 int tcpipc_recv(struct msg_packet_t *msg_packet)
 {
     return recv_msg_dequeue(msg_packet);
 }
 
-void *tcpipc_recv_thread(void* argv)
+/*******************************************************************************
+ * @brief
+ *
+ * @return
+ *******************************************************************************/
+void *tcpipc_recv_thread(void *argv)
 {
-    struct socket_info_t *sock_info = (struct socket_info_t*) argv;
+    struct socket_info_t *sock_info = (struct socket_info_t *)argv;
     struct msg_packet_t msg_packet;
 
     char buffer[BUFFER_MAX_SIZE];
     int buffer_len;
 
-    while(!sock_info->exit_status)
+    while (!sock_info->exit_status)
     {
         buffer_len = read(sock_info->fd, buffer, BUFFER_MAX_SIZE);
 
@@ -134,7 +155,7 @@ void *tcpipc_recv_thread(void* argv)
             }
             else
             {
-                msg_packet.msg_data = (uint8_t*) malloc(msg_packet.msg_len);
+                msg_packet.msg_data = (uint8_t *)malloc(msg_packet.msg_len);
                 memcpy(msg_packet.msg_data, &buffer[2], msg_packet.msg_len);
                 recv_msg_enqueue(&msg_packet);
             }
@@ -142,13 +163,13 @@ void *tcpipc_recv_thread(void* argv)
         else
         {
             printf("Received invalid number of bytes: exp: %ld \trecv: %d\n",
-                    sizeof(struct msg_packet_t), buffer_len);
+                   sizeof(struct msg_packet_t), buffer_len);
             break;
         }
     }
 
     sock_info->exit_status = 1;
-    
+
     return NULL;
 }
 
@@ -156,7 +177,7 @@ void *tcpipc_recv_thread(void* argv)
  * @brief
  *
  * @return
- ******************************************************************************/
+ *******************************************************************************/
 int tcpipc_server_setup(int port)
 {
     int opt = 1;
@@ -212,7 +233,7 @@ int tcpipc_server_setup(int port)
  * @brief
  *
  * @return
- ******************************************************************************/
+ *******************************************************************************/
 int tcpipc_server_connect()
 {
     printf("Server: Listening on port %d...\n", server_info.port);
@@ -235,7 +256,7 @@ int tcpipc_server_connect()
  * @brief
  *
  * @return
- ******************************************************************************/
+ *******************************************************************************/
 int tcpipc_client_setup(int port)
 {
     memset(&client_info, 0, sizeof(struct socket_info_t));
@@ -264,7 +285,7 @@ int tcpipc_client_setup(int port)
  * @brief
  *
  * @return
- ******************************************************************************/
+ *******************************************************************************/
 int tcpipc_client_connect()
 {
     if (connect(client_info.fd, (struct sockaddr *)&server_info.addr,
@@ -280,7 +301,11 @@ int tcpipc_client_connect()
     return 0;
 }
 
-
+/*******************************************************************************
+ * @brief
+ *
+ * @return
+ *******************************************************************************/
 int tcpipc_terminate()
 {
     if (server_info.fd)
@@ -298,6 +323,11 @@ int tcpipc_terminate()
     return 0;
 }
 
+/*******************************************************************************
+ * @brief
+ *
+ * @return
+ *******************************************************************************/
 void tcpipc_print_msg(struct msg_packet_t *msg_packet)
 {
     printf("Message details\n");
@@ -305,7 +335,7 @@ void tcpipc_print_msg(struct msg_packet_t *msg_packet)
     printf("Msg length: %u\n", msg_packet->msg_len);
     printf("Msg Data: ");
 
-    for(int i = 0; i < msg_packet->msg_len; i++)
+    for (int i = 0; i < msg_packet->msg_len; i++)
     {
         printf("%u\t", msg_packet->msg_data[i]);
     }

@@ -2,7 +2,7 @@ CC ?= $(CROSS-COMPILE)gcc
 CFLAGS ?= -g -Wall -Werror -shared -fPIC
 TARGET = libtcpipc.so
 
-LIBS ?= -lpthread -ltcpipc
+LIBS ?= -lpthread
 
 SRCS = tcpipc.c tcpipc_cb_fifo.c
 OBJS = $(SRCS:.c=.o)
