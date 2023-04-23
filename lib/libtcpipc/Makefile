@@ -1,8 +1,6 @@
 CC ?= $(CROSS-COMPILE)gcc
-CFLAGS ?= -g -Wall -Werror -shared -fPIC
+CFLAGS ?= -g -Wall -Werror
 TARGET = libtcpipc.so
-
-LIBS ?= -lpthread
 
 SRCS = tcpipc.c tcpipc_cb_fifo.c
 OBJS = $(SRCS:.c=.o)
@@ -10,10 +8,10 @@ OBJS = $(SRCS:.c=.o)
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)
+	$(CC) $(CFLAGS) -shared -o $(TARGET) $(OBJS)
 
 $(OBJS): $(SRCS)
-	$(CC) $(CFLAGS) -c $(SRCS)
+	$(CC) $(CFLAGS) -fPIC -c $(SRCS)
 
 clean:
 	rm -f $(TARGET) *.so *.o *.elf *.map *.out

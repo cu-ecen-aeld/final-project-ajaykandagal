@@ -169,7 +169,9 @@ void pingpong_init()
     endwin();
     refresh();
     perror("Could not use colors");
-    exit(EXIT_FAILURE);
+
+    /** Colors currently not supported on TTY **/
+    // exit(EXIT_FAILURE);
   }
 
   // Get terminal width and height
@@ -181,7 +183,9 @@ void pingpong_init()
 
   // Draw box around terminal
   box(main_window, 0, 0);
-  wrefresh(main_window);
+
+  /** Gives segmentation fault on buildroot rpi image **/
+  // wrefresh(main_window);
 
   keypad(stdscr, true);
   noecho();

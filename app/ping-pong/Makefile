@@ -1,8 +1,8 @@
 CC ?= $(CROSS-COMPILE)gcc
 CFLAGS ?= -g -Wall -Werror
 TARGET = pingpong
-
 TCPIPC_DIR=../../lib/libtcpipc/
+
 INCLUDES ?= -I$(TCPIPC_DIR)
 LDIR ?= -L$(TCPIPC_DIR)
 LIBS ?= -lncurses -lpthread -ltcpipc
