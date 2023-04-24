@@ -193,11 +193,11 @@ void pingpong_init()
 
   if (is_server)
   {
-    tcpipc_init(TCP_ROLE_SERVER, 9000);
+    tcpipc_init(TCP_ROLE_SERVER, "", 9000);
   }
   else
   {
-    tcpipc_init(TCP_ROLE_CLIENT, 9000);
+    tcpipc_init(TCP_ROLE_CLIENT, "10.0.0.227", 9000);
   }
 
   pingpong_send_msg(MSG_ID_WIN_SIZE);

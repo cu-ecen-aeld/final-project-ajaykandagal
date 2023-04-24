@@ -59,7 +59,7 @@ struct socket_info_t
  *
  * @return
  *******************************************************************************/
-int tcpipc_init(enum tcp_role_e tcp_role, int port);
+int tcpipc_init(enum tcp_role_e tcp_role, char *addr, int port);
 
 /*******************************************************************************
  * @brief

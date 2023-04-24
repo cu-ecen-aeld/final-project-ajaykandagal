@@ -10,7 +10,7 @@
 /** Private Function Prototypes **/
 int tcpipc_server_setup(int port);
 int tcpipc_server_connect();
-int tcpipc_client_setup(int port);
+int tcpipc_client_setup(char *serv_addr, int serv_port);
 int tcpipc_client_connect();
 int tcpipc_terminate();
 void *tcpipc_recv_thread(void *argv);
@@ -26,7 +26,7 @@ pthread_t tcpipc_recv_tid;
  *
  * @return
  *******************************************************************************/
-int tcpipc_init(enum tcp_role_e tcp_role, int port)
+int tcpipc_init(enum tcp_role_e tcp_role, char *addr, int port)
 {
     switch (tcp_role)
     {
@@ -40,7 +40,7 @@ int tcpipc_init(enum tcp_role_e tcp_role, int port)
         sock_info = &client_info;
         break;
     case TCP_ROLE_CLIENT:
-        if (tcpipc_client_setup(port))
+        if (tcpipc_client_setup(addr, port))
             return tcpipc_terminate();
 
         if (tcpipc_client_connect())
@@ -257,7 +257,7 @@ int tcpipc_server_connect()
  *
  * @return
  *******************************************************************************/
-int tcpipc_client_setup(int port)
+int tcpipc_client_setup(char *serv_addr, int serv_port)
 {
     memset(&client_info, 0, sizeof(struct socket_info_t));
     memset(&server_info, 0, sizeof(struct socket_info_t));
@@ -271,9 +271,9 @@ int tcpipc_client_setup(int port)
         return -1;
     }
 
-    server_info.port = port;
+    server_info.port = serv_port;
     server_info.addr.sin_family = AF_INET;
-    server_info.addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    server_info.addr.sin_addr.s_addr = inet_addr(serv_addr);
     server_info.addr.sin_port = htons(server_info.port);
 
     printf("Client: Initialized\n");
