@@ -35,10 +35,20 @@
 #include <unistd.h>
 
 #include "tcpipc.h"
+#include "joystick.h"
+
+#define PINGPONG_EN_LOGS 0
+#define PINGPONG_EN_JOYSTICK 0
+#define PINGPONG_REFRESH_DELAY 12000
+
+#if PINGPONG_EN_JOYSTICK
+#define PINGPONG_BALL_SPEED   4
+#else
+#define PINGPONG_BALL_SPEED   16
+#endif
 
 #define PAD_WIDTH 5
 #define PAD_WIDTH_HALF 2
-#define DEBUG 0
 #define MAIN_WINDOW_COLOR 1
 
 /** Typedefs **/
@@ -74,6 +84,7 @@ void pingpong_close();
 void pingpong_new_game();
 void pingpong_new_round();
 void pingpong_ball_mov();
+void pingpong_read_keypad();
 void pingpong_pad_mov(struct pad_obj_t *pad, mov_dir_t dir);
 void pingpong_update_scrn();
 
@@ -84,6 +95,7 @@ int pingpong_recv_msg();
 bool is_server = true;
 int win_width = 0;
 int win_height = 0;
+bool end = false;
 
 struct ball_obj_t ball_obj;
 struct pad_obj_t p1_pad, p2_pad;
@@ -100,8 +112,6 @@ struct window_info_t opp_term_win_info;
 int main(int argc, char **argv)
 {
   int cont = 0;
-  bool end = false;
-
 
   if (argc == 2)
   {
@@ -119,31 +129,17 @@ int main(int argc, char **argv)
 
   pingpong_init();
 
-  for (nodelay(stdscr, 1); !end; usleep(12000))
+  for (nodelay(stdscr, 1); !end; usleep(PINGPONG_REFRESH_DELAY))
   {
     while (pingpong_recv_msg() > 0)
       ;
 
-    if (++cont % 16 == 0)
+    if (++cont % PINGPONG_BALL_SPEED == 0)
     {
       pingpong_ball_mov();
     }
-    switch (getch())
-    {
-    case KEY_RIGHT:
-      pingpong_pad_mov(&p1_pad, MOV_RIGHT);
-      break;
-    case KEY_LEFT:
-      pingpong_pad_mov(&p1_pad, MOV_LEFT);
-      break;
-    case 'p':
-      getchar();
-      break;
-    case 0x1B:
-      endwin();
-      end = true;
-      break;
-    }
+
+    pingpong_read_keypad();
     pingpong_update_scrn();
   }
 
@@ -153,6 +149,10 @@ int main(int argc, char **argv)
 
 void pingpong_init()
 {
+#if PINGPONG_EN_JOYSTICK
+  joystick_init();
+#endif
+
   // Initialize window
   main_window = initscr();
 
@@ -197,7 +197,7 @@ void pingpong_init()
   }
   else
   {
-    tcpipc_init(TCP_ROLE_CLIENT, "10.0.0.227", 9000);
+    tcpipc_init(TCP_ROLE_CLIENT, "127.0.0.1", 9000);
   }
 
   pingpong_send_msg(MSG_ID_WIN_SIZE);
@@ -222,6 +222,9 @@ void pingpong_init()
 
 void pingpong_close()
 {
+#if PINGPONG_EN_JOYSTICK
+  joystick_close();
+#endif
   tcpipc_close();
   delwin(main_window);
   endwin();
@@ -355,7 +358,7 @@ void pingpong_update_scrn()
     mvprintw(p2_pad.y, p2_pad.x + i, "=");
   }
 
-#if DEBUG
+#if PINGPONG_EN_LOGS
   mvprintw(0, 0, "%d,%d", ball_obj.x, ball_obj.y);
   mvprintw(1, 0, "%d,%d", p1_pad.x, p1_pad.y);
   mvprintw(2, 0, "%d,%d", p2_pad.x, p2_pad.y);
@@ -466,4 +469,46 @@ int pingpong_recv_msg()
   }
 
   return msg_packet.msg_id;
+}
+
+void pingpong_read_keypad()
+{
+#if PINGPONG_EN_JOYSTICK
+  struct joystick_data_t jd;
+
+  joystick_read(&jd);
+
+  if (jd.x_pos > 100)
+  {
+    pingpong_pad_mov(&p1_pad, MOV_RIGHT);
+  }
+  else if (jd.x_pos < -100)
+  {
+    pingpong_pad_mov(&p1_pad, MOV_LEFT);
+  }
+  else if (jd.button)
+  {
+    endwin();
+    end = true;
+  }
+
+  wrefresh ( main_window );
+#else
+  switch (getch())
+  {
+  case KEY_RIGHT:
+    pingpong_pad_mov(&p1_pad, MOV_RIGHT);
+    break;
+  case KEY_LEFT:
+    pingpong_pad_mov(&p1_pad, MOV_LEFT);
+    break;
+  case 'p':
+    getchar();
+    break;
+  case 0x1B:
+    endwin();
+    end = true;
+    break;
+  }
+#endif
 }

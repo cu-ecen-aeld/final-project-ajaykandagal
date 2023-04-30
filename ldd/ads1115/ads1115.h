@@ -25,7 +25,7 @@
 #include <linux/i2c.h>
 
 //Remove below comment to enable debug
-#define AESD_DEBUG 1 
+#define AESD_DEBUG 0
 
 #undef PDEBUG
 #ifdef AESD_DEBUG

@@ -77,7 +77,7 @@ int joystick_read(struct joystick_data_t *joystick_data)
         joystick_data->y_pos = (((JOYSTICK_Y_DEF - ads1115_data[2]) * 128) / JOYSTICK_Y_MAX);
         joystick_data->x_pos = (((JOYSTICK_X_DEF - ads1115_data[3]) * 128) / JOYSTICK_X_MAX);
 
-#if DEBUG_LOGS
+#if JOYSTICK_EN_LOGS
         printf("\n");
         for (int i = 0; i < 4; i++)
             printf("%u\t", ads1115_data[i]);
@@ -89,3 +89,17 @@ int joystick_read(struct joystick_data_t *joystick_data)
 
     return ret;
 }
+
+#if JOYSTICK_EN_TEST
+int main()
+{
+    struct joystick_data_t jd;
+
+    joystick_init();
+
+    for (int i = 0; i < 10; i++)
+        joystick_read(&jd);
+
+    joystick_close();
+}
+#endif

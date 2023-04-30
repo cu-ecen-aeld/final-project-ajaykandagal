@@ -1,11 +1,11 @@
 CC ?= $(CROSS-COMPILE)gcc
 CFLAGS ?= -g -Wall -Werror
 TARGET = pingpong
-TCPIPC_DIR=../../lib/libtcpipc/
+LIB_TOP_DIR=../../lib
 
-INCLUDES ?= -I$(TCPIPC_DIR)
-LDIR ?= -L$(TCPIPC_DIR)
-LIBS ?= -lncurses -lpthread -ltcpipc
+INCLUDES ?= -I$(LIB_TOP_DIR)/libtcpipc -I$(LIB_TOP_DIR)/libjoystick
+LDIR ?= -L$(LIB_TOP_DIR)
+LIBS ?= -lncurses -lpthread -ltcpipc -ljoystick
 
 SRCS = pingpong.c
 OBJS = $(SRCS:.c=.o)

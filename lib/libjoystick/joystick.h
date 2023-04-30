@@ -16,7 +16,10 @@
 #include <fcntl.h>
 
 /** Defines  **/
-#define DEBUG_LOGS          0
+#define JOYSTICK_EN_LOGS    0
+
+// Flip the comments in Makefile to enable Joystick test
+#define JOYSTICK_EN_TEST    0
 
 #define JOYSTICK_DEV        ("/dev/ads1115")
 #define JOYSTICK_X_DEF      13500
