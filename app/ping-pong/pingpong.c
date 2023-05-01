@@ -38,18 +38,24 @@
 #include "joystick.h"
 
 #define PINGPONG_EN_LOGS 0
-#define PINGPONG_EN_JOYSTICK 1
-#define PINGPONG_REFRESH_DELAY 12000
+#define PINGPONG_EN_JOYSTICK 0
 
 #if PINGPONG_EN_JOYSTICK
-#define PINGPONG_BALL_SPEED   4
+#define PINGPONG_BALL_SPEED   6
 #else
-#define PINGPONG_BALL_SPEED   16
+#define PINGPONG_BALL_SPEED   12
 #endif
+
+#define PINGPONG_REFRESH_DELAY 8000
 
 #define PAD_WIDTH 5
 #define PAD_WIDTH_HALF 2
-#define MAIN_WINDOW_COLOR 1
+
+#define MY_PADDLE_COLOR 1
+#define OPP_PADDLE_COLOR  2
+#define BALL_COLOR 3
+#define SCORE_COLOR 4
+#define MAIN_WINDOW_COLOR 5
 
 /** Typedefs **/
 typedef enum
@@ -169,23 +175,14 @@ void pingpong_init()
     endwin();
     refresh();
     perror("Could not use colors");
-
-    /** Colors currently not supported on TTY **/
-    // exit(EXIT_FAILURE);
   }
 
   // Get terminal width and height
   getmaxyx(stdscr, term_win_info.height, term_win_info.width);
 
   // Set color pair for terminal
-  init_pair(MAIN_WINDOW_COLOR, COLOR_BLUE, COLOR_BLACK);
+  init_pair(MAIN_WINDOW_COLOR, COLOR_WHITE, COLOR_BLACK);
   wbkgd(main_window, COLOR_PAIR(MAIN_WINDOW_COLOR));
-
-  // Draw box around terminal
-  box(main_window, 0, 0);
-
-  /** Gives segmentation fault on buildroot rpi image **/
-  // wrefresh(main_window);
 
   keypad(stdscr, true);
   noecho();
@@ -194,17 +191,34 @@ void pingpong_init()
   if (is_server)
   {
     tcpipc_init(TCP_ROLE_SERVER, "", 9000);
+
+    // set color pair for player paddle
+    init_pair(MY_PADDLE_COLOR, COLOR_CYAN, COLOR_BLACK);
+
+    // set color pair for opponent paddle
+    init_pair(OPP_PADDLE_COLOR, COLOR_YELLOW, COLOR_BLACK);
   }
   else
   {
-    tcpipc_init(TCP_ROLE_CLIENT, "127.0.0.1", 9000);
+    tcpipc_init(TCP_ROLE_CLIENT, "10.0.0.242", 9000);
+
+    // set color pair for player paddle
+    init_pair(MY_PADDLE_COLOR, COLOR_YELLOW, COLOR_BLACK);
+
+    // set color pair for opponent paddle
+    init_pair(OPP_PADDLE_COLOR, COLOR_CYAN, COLOR_BLACK);
   }
+
+  /* set color pair for ball */
+  init_pair(BALL_COLOR, COLOR_RED, COLOR_BLACK);
+
+  /* set color pair for title */
+  init_pair(SCORE_COLOR, COLOR_GREEN, COLOR_BLACK);
 
   pingpong_send_msg(MSG_ID_WIN_SIZE);
 
   // Get opponents window size
-  while (pingpong_recv_msg() != MSG_ID_WIN_SIZE)
-    ;
+  while (pingpong_recv_msg() != MSG_ID_WIN_SIZE);
 
   // Set game window size to minimum specs
   if (term_win_info.width <= opp_term_win_info.width)
@@ -345,25 +359,29 @@ void pingpong_update_scrn()
 {
   erase();
 
+  attron(COLOR_PAIR(SCORE_COLOR));
   mvprintw((win_height / 2), (win_width / 2) - 2, "%i | %i", p1_pad.wins, p2_pad.wins);
+  attroff(COLOR_PAIR(SCORE_COLOR));
 
-  // mvvline(0, win_width / 2, ACS_VLINE, win_height);
-  attron(COLOR_PAIR(1));
-
+  attron(COLOR_PAIR(BALL_COLOR));
   mvprintw(ball_obj.y, ball_obj.x, "o");
+  attroff(COLOR_PAIR(BALL_COLOR));
 
+  attron(COLOR_PAIR(MY_PADDLE_COLOR));
   for (int i = -PAD_WIDTH_HALF; i <= PAD_WIDTH_HALF; i++)
-  {
     mvprintw(p1_pad.y, p1_pad.x + i, "=");
+  attroff(COLOR_PAIR(MY_PADDLE_COLOR));
+
+  attron(COLOR_PAIR(OPP_PADDLE_COLOR));
+  for (int i = -PAD_WIDTH_HALF; i <= PAD_WIDTH_HALF; i++)
     mvprintw(p2_pad.y, p2_pad.x + i, "=");
-  }
+  attroff(COLOR_PAIR(OPP_PADDLE_COLOR));
 
 #if PINGPONG_EN_LOGS
   mvprintw(0, 0, "%d,%d", ball_obj.x, ball_obj.y);
   mvprintw(1, 0, "%d,%d", p1_pad.x, p1_pad.y);
   mvprintw(2, 0, "%d,%d", p2_pad.x, p2_pad.y);
 #endif
-  attroff(COLOR_PAIR(1));
 }
 
 int pingpong_send_msg(enum msg_id_e msg_id)

@@ -127,11 +127,12 @@ void *tcpipc_recv_thread(void *argv)
     struct msg_packet_t msg_packet;
 
     char buffer[BUFFER_MAX_SIZE];
-    int buffer_len;
+    int buffer_len, buffer_index = 0;
 
     while (!sock_info->exit_status)
     {
         buffer_len = read(sock_info->fd, buffer, BUFFER_MAX_SIZE);
+        buffer_index =0;
 
         if (buffer_len < 0)
         {
@@ -143,28 +144,42 @@ void *tcpipc_recv_thread(void *argv)
             printf("Disconnected\n");
             break;
         }
-        else if (buffer_len >= MESSAGE_MIN_LEN)
-        {
-            // printf("Received all bytes\n");
-            msg_packet.msg_id = buffer[0];
-            msg_packet.msg_len = buffer[1];
-
-            if (msg_packet.msg_len == 0)
-            {
-                printf("Empty data\n");
-            }
-            else
-            {
-                msg_packet.msg_data = (uint8_t *)malloc(msg_packet.msg_len);
-                memcpy(msg_packet.msg_data, &buffer[2], msg_packet.msg_len);
-                recv_msg_enqueue(&msg_packet);
-            }
-        }
         else
         {
-            printf("Received invalid number of bytes: exp: %ld \trecv: %d\n",
-                   sizeof(struct msg_packet_t), buffer_len);
-            break;
+            while (buffer_index < buffer_len)
+            {
+                msg_packet.msg_id = 0;
+                msg_packet.msg_len = 0;
+                msg_packet.msg_data = NULL;
+
+                if (buffer_index + 2 <= buffer_len)
+                {
+                    msg_packet.msg_id = buffer[buffer_index + 0];
+                    msg_packet.msg_len = buffer[buffer_index + 1];
+                    buffer_index += 2;
+                }
+                else
+                {
+                    break;
+                }
+
+                if (buffer_index + msg_packet.msg_len <= buffer_len)
+                {
+                    if (msg_packet.msg_len != 0)
+                    {
+                        msg_packet.msg_data = (uint8_t *)malloc(msg_packet.msg_len);
+                        memcpy(msg_packet.msg_data, &buffer[buffer_index], msg_packet.msg_len);
+                    }
+
+                    buffer_index += msg_packet.msg_len;
+
+                    recv_msg_enqueue(&msg_packet);
+                }
+                else
+                {
+                    break;
+                }
+            }
         }
     }
 
