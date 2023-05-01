@@ -4,7 +4,7 @@ TARGET = pingpong
 LIB_TOP_DIR=../../lib
 
 INCLUDES ?= -I$(LIB_TOP_DIR)/libtcpipc -I$(LIB_TOP_DIR)/libjoystick
-LDIR ?= -L$(LIB_TOP_DIR)
+LDIR ?= -L$(LIB_TOP_DIR)/libtcpipc -L$(LIB_TOP_DIR)/libjoystick
 LIBS ?= -lncurses -lpthread -ltcpipc -ljoystick
 
 SRCS = pingpong.c

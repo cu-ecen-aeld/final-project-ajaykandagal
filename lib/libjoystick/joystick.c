@@ -17,7 +17,7 @@ int file_fd;
  *******************************************************************************/
 int joystick_init()
 {
-    file_fd = open(JOYSTICK_DEV, O_CREAT | O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO);
+    file_fd = open(JOYSTICK_DEV, O_CREAT | O_RDWR, 0x766);
 
     if (file_fd < 0)
     {

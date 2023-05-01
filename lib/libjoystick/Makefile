@@ -7,7 +7,7 @@ SRCS = joystick.c
 OBJS = $(SRCS:.c=.o)
 
 ifeq ($(PREFIX),)
-	PREFIX := /usr/local
+	PREFIX := /usr
 endif
 
 all: $(TARGET)
