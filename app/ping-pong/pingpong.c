@@ -38,7 +38,7 @@
 #include "joystick.h"
 
 #define PINGPONG_EN_LOGS 0
-#define PINGPONG_EN_JOYSTICK 0
+#define PINGPONG_EN_JOYSTICK 1
 #define PINGPONG_REFRESH_DELAY 12000
 
 #if PINGPONG_EN_JOYSTICK
@@ -491,8 +491,8 @@ void pingpong_read_keypad()
     endwin();
     end = true;
   }
-
-  wrefresh ( main_window );
+  
+  getch();
 #else
   switch (getch())
   {
